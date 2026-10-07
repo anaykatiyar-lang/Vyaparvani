@@ -116,13 +116,13 @@ function showPhoto(file) {
 
 async function compressedImageDataUrl(file) {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
   const canvas = $('captureCanvas');
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
   canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.78));
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.72));
   if (!blob) throw new Error('Could not prepare the photo. Choose it again and retry.');
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
