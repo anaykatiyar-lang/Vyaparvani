@@ -14,7 +14,7 @@ Requires Python 3.10 or newer and no third-party packages.
 python app.py
 ```
 
-Open <http://127.0.0.1:8000>. Use the camera or upload an invoice photo, review the extracted fields, and confirm any unclear quantity units. Camera capture requires browser permission. If `GEMINI_API_KEY` is configured on the server, the user can choose to send the photo to Gemini for field extraction; otherwise the photo remains a local preview and the user enters the printed values manually. Typed text is parsed by a conservative local extractor.
+Open <http://127.0.0.1:8000>. Use the camera or upload an invoice photo, review the extracted fields, and confirm any unclear quantity units. Camera capture requires browser permission. Configure `MISTRAL_API_KEY` or `GEMINI_API_KEY` on the server to enable photo reading. Mistral OCR is preferred when both keys are present; set `IMAGE_READER_PROVIDER` to `mistral` or `gemini` to choose explicitly. Without a configured provider, photos remain local previews and the user enters printed values manually. Typed text is parsed by a conservative local extractor.
 
 ## Example typed input
 
@@ -44,15 +44,16 @@ The app shows ₹550.00/carton. It never removes GST, adds internal pieces to a 
 
 ## Extraction provider configuration
 
-The configured provider defaults to `manual_text`. For local development, put `GEMINI_API_KEY=...` in `.env.local` at the repository root. The local `app.py` reads that gitignored file when the server starts. Do not commit `.env.local` or place the key in a GitHub file. For a Vercel deployment, add `GEMINI_API_KEY` as a Vercel project environment variable; serverless functions do not load `.env.local`. You can alternatively set the key in PowerShell before starting the app:
+For local development, put provider keys in the gitignored `.env.local` at the repository root. The local `app.py` reads it when the server starts. Do not commit the file or place keys in browser code. To use Mistral OCR, add `MISTRAL_API_KEY=...`; the default OCR model is `mistral-ocr-latest`. Optional settings are `IMAGE_READER_PROVIDER=mistral` and `MISTRAL_OCR_MODEL=mistral-ocr-latest`. Gemini remains available with `GEMINI_API_KEY` and optional `GEMINI_MODEL`. For Vercel, add the selected keys and optional provider/model settings as project environment variables; serverless functions do not load `.env.local`.
 
 ```powershell
-$env:GEMINI_API_KEY = "your-key-from-google-ai-studio"
-$env:GEMINI_MODEL = "gemini-3.8-flash" # optional
+$env:MISTRAL_API_KEY = "your-key-from-mistral"
+$env:IMAGE_READER_PROVIDER = "mistral" # optional; Mistral is preferred automatically when its key is present
+$env:MISTRAL_OCR_MODEL = "mistral-ocr-latest" # optional
 python app.py
 ```
 
-The key is read only by the server and must never be placed in browser code or committed. On Vercel, add `GEMINI_API_KEY` and optionally `GEMINI_MODEL` in the project's environment-variable settings. The user chooses **Read photo with Gemini** before the invoice image is transmitted. Gemini returns structured fields and source evidence; Python validation and `calculator.py` remain authoritative for confirmation and arithmetic. With no key, image previews and typed/manual entry remain available.
+Provider keys are read only by the server and must never be placed in browser code or committed. On Vercel, add the selected provider key and optional provider/model settings in the project's environment variables. The user chooses **Read photo** before the image is sent to Mistral OCR or Gemini for field extraction. The selected provider returns fields for user review; Python validation and `calculator.py` remain authoritative for confirmation and all arithmetic. With no configured key, image previews and typed/manual entry remain available.
 
 ## Deploy to Vercel
 

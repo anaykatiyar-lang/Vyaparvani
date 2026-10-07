@@ -19,7 +19,10 @@ def load_local_env():
             line = line[7:].strip()
         name, separator, value = line.partition("=")
         name = name.strip()
-        if not separator or name not in {"GEMINI_API_KEY", "GEMINI_MODEL"}:
+        if not separator or name not in {
+            "GEMINI_API_KEY", "GEMINI_MODEL", "MISTRAL_API_KEY",
+            "MISTRAL_OCR_MODEL", "IMAGE_READER_PROVIDER",
+        }:
             continue
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:

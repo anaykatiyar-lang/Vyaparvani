@@ -6,6 +6,11 @@ let previewUrl = null;
 let cameraStream = null;
 let activePhoto = null;
 let imageOcrEnabled = false;
+let imageOcrProvider = 'gemini';
+
+function imageReaderLabel() {
+  return imageOcrProvider === 'mistral' ? 'Mistral OCR' : 'Gemini';
+}
 
 function currentFields() {
   return { product: form.product.value, net_amount_paid: form.amount.value,
@@ -105,7 +110,7 @@ function showPhoto(file) {
   $('photoPreview').hidden = false;
   clearResult();
   showNotice(imageOcrEnabled
-    ? 'Photo ready. Choose “Read photo with Gemini” to extract the printed fields.'
+    ? `Photo ready. Choose “Read photo with ${imageReaderLabel()}” to extract the printed fields.`
     : 'Photo added. Read the printed values from it and enter them below; image reading is not configured yet.');
 }
 
@@ -192,7 +197,7 @@ $('readPhotoButton').addEventListener('click', async () => {
     showNotice(error.message || 'Could not read this photo. Enter the details manually.', 'error');
   } finally {
     button.disabled = false;
-    button.innerHTML = 'Read photo with Gemini <span aria-hidden="true">→</span>';
+    button.innerHTML = `Read photo with ${imageReaderLabel()} <span aria-hidden="true">→</span>`;
   }
 });
 $('removePhoto').addEventListener('click', () => {
@@ -251,9 +256,13 @@ form.unit.addEventListener('change', () => {
 
 fetch('/api/config').then(response => response.json()).then(config => {
   imageOcrEnabled = Boolean(config.image_ocr);
-  $('providerStatus').textContent = imageOcrEnabled ? 'Photo reading: Gemini' : 'Manual review';
+  imageOcrProvider = config.provider || 'gemini';
+  $('providerStatus').textContent = imageOcrEnabled
+    ? `Photo reading: ${imageReaderLabel()}`
+    : 'Manual review';
   $('readPhotoButton').hidden = !imageOcrEnabled;
+  $('readPhotoButton').innerHTML = `Read photo with ${imageReaderLabel()} <span aria-hidden="true">→</span>`;
   $('privacyNote').innerHTML = imageOcrEnabled
-    ? '<span class="lock-icon" aria-hidden="true">◈</span> Nothing is sent until you choose Read photo. Then Gemini receives it to read invoice fields.'
-    : '<span class="lock-icon" aria-hidden="true">◈</span> Your photo stays on this device. Add a Gemini key to enable photo reading.';
+    ? `<span class="lock-icon" aria-hidden="true">◈</span> Nothing is sent until you choose Read photo. Then ${imageReaderLabel()} receives it to read invoice fields.`
+    : '<span class="lock-icon" aria-hidden="true">◈</span> Your photo stays on this device. Add a Mistral or Gemini key on the server to enable photo reading.';
 }).catch(() => { $('providerStatus').textContent = 'Manual review'; });

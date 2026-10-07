@@ -55,7 +55,14 @@ JSON shape: {"product": string|null, "net_amount_paid": string|null, "paid_quant
             {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode("ascii")}},
             {"text": prompt},
         ]}],
-        "generationConfig": {"responseMimeType": "application/json", "temperature": 0},
+        # Gemini 3.x defaults to medium reasoning. Invoice field extraction is
+        # a latency-sensitive task, so use low thinking and omit deprecated
+        # sampling parameters such as temperature for Gemini 3.8 Flash.
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "thinkingConfig": {"thinkingLevel": "low"},
+            "maxOutputTokens": 512,
+        },
     }
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     req = Request(endpoint, data=json.dumps(request_body).encode("utf-8"), headers={
@@ -93,7 +100,7 @@ JSON shape: {"product": string|null, "net_amount_paid": string|null, "paid_quant
         raise ValueError("The app server cannot connect to Google's Gemini service. Check its outbound internet access, then retry.") from error
     except (TimeoutError, socket.timeout) as error:
         logging.warning("Gemini request timed out.")
-        raise ValueError("Gemini did not respond in time. Check the app server's internet connection, then retry.") from error
+        raise ValueError("Gemini did not respond in time. Google may be busy; wait a little and retry, or enter the invoice details manually.") from error
 
     try:
         text = response_data["candidates"][0]["content"]["parts"][0]["text"]
