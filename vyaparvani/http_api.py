@@ -1,12 +1,8 @@
 """Shared HTTP request helpers for the local server and Vercel functions."""
 
 import json
-import os
-
 from .calculator import calculate
 from .extraction import ManualTextProvider
-from .mistral_ocr import extract_invoice_image_with_mistral
-from .vision import extract_invoice_image
 
 provider = ManualTextProvider()
 
@@ -23,34 +19,6 @@ def extract(payload):
 
 def calculate_fields(payload):
     return calculate(payload)
-
-
-def config():
-    provider_name = image_reader_provider()
-    return {"provider": provider_name or "manual_text", "image_ocr": provider_name is not None}
-
-
-def image_reader_provider():
-    configured = os.environ.get("IMAGE_READER_PROVIDER", "").strip().lower()
-    if configured in {"mistral", "gemini"}:
-        return configured if os.environ.get(f"{configured.upper()}_API_KEY") else None
-    # Prefer Mistral when both keys exist, since it is the requested provider.
-    if os.environ.get("MISTRAL_API_KEY"):
-        return "mistral"
-    if os.environ.get("GEMINI_API_KEY"):
-        return "gemini"
-    return None
-
-
-def extract_image(payload):
-    provider_name = image_reader_provider()
-    if provider_name is None:
-        raise ProviderNotConfigured("Photo reading is not configured. Enter or paste the printed details instead.")
-    if provider_name == "mistral":
-        fields = extract_invoice_image_with_mistral(payload)
-    else:
-        fields = extract_invoice_image(payload)
-    return {"fields": fields}
 
 
 def send_json(handler, payload, status=200):
@@ -73,7 +41,3 @@ def request_payload(handler):
     except (ValueError, json.JSONDecodeError) as error:
         send_json(handler, {"error": str(error)}, 400)
         return None
-
-
-class ProviderNotConfigured(Exception):
-    """The requested extraction provider has no server-side credentials."""

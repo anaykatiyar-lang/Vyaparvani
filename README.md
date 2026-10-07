@@ -4,7 +4,7 @@ VyaparVani reads an FMCG invoice or scheme and calculates the GST-inclusive net 
 
 `net amount actually payable ÷ (paid cartons + explicit free cartons)`
 
-The calculation is deterministic Python code. Typed text uses a conservative local extractor. Photo extraction is optional and uses a server-side Gemini key when configured; otherwise photos stay as local previews and the user enters the details manually.
+The calculation is deterministic Python code. Photo text recognition runs in the browser using Tesseract.js; no Mistral or Gemini API key is needed. Recognized text is sent to VyaparVani's own extraction endpoint to prefill fields, then the user reviews them before calculation.
 
 ## Run
 
@@ -14,7 +14,7 @@ Requires Python 3.10 or newer and no third-party packages.
 python app.py
 ```
 
-Open <http://127.0.0.1:8000>. Use the camera or upload an invoice photo, review the extracted fields, and confirm any unclear quantity units. Camera capture requires browser permission. Configure `MISTRAL_API_KEY` or `GEMINI_API_KEY` on the server to enable photo reading. Mistral OCR is preferred when both keys are present; set `IMAGE_READER_PROVIDER` to `mistral` or `gemini` to choose explicitly. Without a configured provider, photos remain local previews and the user enters printed values manually. Typed text is parsed by a conservative local extractor.
+Open <http://127.0.0.1:8000>. Use the camera or upload an invoice photo, read it on-device, review the extracted fields, and confirm any unclear quantity units. Camera capture requires browser permission. Tesseract.js and its English language data are loaded from jsDelivr on first use; the invoice image itself stays in the browser. Typed/OCR text is parsed conservatively by the app.
 
 ## Example typed input
 
@@ -35,31 +35,22 @@ The app shows ₹550.00/carton. It never removes GST, adds internal pieces to a 
 - `public/` — responsive camera/upload flow, text entry, editable review fields, states, and calculation breakdown
 - `api/` — Vercel Python function entry points
 - `vyaparvani/http_api.py` — shared API logic used locally and on Vercel
-- `vyaparvani/vision.py` — optional Gemini image-to-fields provider
+- `public/app.js` — on-device Tesseract OCR, editable field review, and calculator UI
 - `tests/` — ground-truth scenarios derived from the five invoice photos and calculator behavior
 - `data/ground_truth.json` — photo-derived values, source notes, and expected validation states
 - `AGENTS.md` — repository-wide product and implementation rules
 - `.agents/skills/` — focused repo-local skills for UI, extraction, calculation, validation, and testing
 - `.agents/skills/landing-price-calculator/references/domain-rules.md` — the agreed V1 business rules and photo notes
 
-## Extraction provider configuration
+## Photo OCR
 
-For local development, put provider keys in the gitignored `.env.local` at the repository root. The local `app.py` reads it when the server starts. Do not commit the file or place keys in browser code. To use Mistral OCR, add `MISTRAL_API_KEY=...`; the default OCR model is `mistral-ocr-latest`. Optional settings are `IMAGE_READER_PROVIDER=mistral` and `MISTRAL_OCR_MODEL=mistral-ocr-latest`. Gemini remains available with `GEMINI_API_KEY` and optional `GEMINI_MODEL`. For Vercel, add the selected keys and optional provider/model settings as project environment variables; serverless functions do not load `.env.local`.
-
-```powershell
-$env:MISTRAL_API_KEY = "your-key-from-mistral"
-$env:IMAGE_READER_PROVIDER = "mistral" # optional; Mistral is preferred automatically when its key is present
-$env:MISTRAL_OCR_MODEL = "mistral-ocr-latest" # optional
-python app.py
-```
-
-Provider keys are read only by the server and must never be placed in browser code or committed. On Vercel, add the selected provider key and optional provider/model settings in the project's environment variables. The user chooses **Read photo** before the image is sent to Mistral OCR or Gemini for field extraction. The selected provider returns fields for user review; Python validation and `calculator.py` remain authoritative for confirmation and all arithmetic. With no configured key, image previews and typed/manual entry remain available.
+The website uses Tesseract.js 7 in a browser worker with English OCR. Its JavaScript, WebAssembly worker, and language data are downloaded when needed and cached by the browser. Photo OCR requires an internet connection the first time those assets are loaded, but it does not require provider credentials and does not upload the invoice image. The recognized text is sent to the app's own `/api/extract` endpoint for conservative field prefill. The user must review all values; Python validation and `calculator.py` remain authoritative for confirmation and arithmetic.
 
 ## Deploy to Vercel
 
-This repository includes Vercel Python function entry points and serves the app from `public/`. Import the GitHub repository in Vercel and leave the project root at the repository root (the directory containing this README). No provider credentials are required for manual V1 use. Python Functions are currently listed as Beta by Vercel; check the current runtime status before using this deployment for critical business workflows.
+This repository includes Vercel Python function entry points and serves the app from `public/`. Import the GitHub repository in Vercel and leave the project root at the repository root (the directory containing this README). No OCR provider credentials are required. Python Functions are currently listed as Beta by Vercel; check the current runtime status before using this deployment for critical business workflows.
 
-The API endpoints are `/api/config`, `/api/extract`, `/api/extract-image`, and `/api/calculate`. They use the same shared validation and extraction logic as the local server.
+The web app uses `/api/extract` for recognized text prefill and `/api/calculate` for validated arithmetic. The photo itself is processed in the browser and is not sent to a backend OCR provider.
 
 ## Ground truth and limits
 
