@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f5">
+  <meta name="description" content="Check your GST-inclusive landing price per carton from an FMCG invoice.">
+  <title>VyaparVani — Know your carton cost</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="VyaparVani home"><span class="brand-mark" aria-hidden="true">V</span><span>VyaparVani</span></a>
+    <span class="topbar-note">A clear price, every time</span>
+  </header>
+  <main>
+    <section class="intro">
+      <div class="intro-copy"><h1>Know what each carton<br class="desktop-break"> really costs.</h1><p>Start with a photo of your invoice. Check the details, then get your GST-inclusive landing price.</p></div>
+      <div class="intro-mark" aria-hidden="true"><span>₹</span><i></i><b></b><em></em></div>
+    </section>
+
+    <section class="workspace" aria-label="Carton landing price calculator">
+      <section class="input-card card" aria-labelledby="addTitle">
+        <div class="section-heading"><span class="step">01</span><div><h2 id="addTitle">Add your invoice</h2><p>Take a photo or choose one from your device.</p></div></div>
+        <div class="capture-actions">
+          <button class="capture-button primary-capture" id="openCamera" type="button"><span class="capture-icon camera-icon" aria-hidden="true"></span><span><strong>Take a photo</strong><small>Use your camera</small></span><span class="action-arrow" aria-hidden="true">↗</span></button>
+          <label class="capture-button" for="photo"><span class="capture-icon file-icon" aria-hidden="true"></span><span><strong>Upload a photo</strong><small>JPG, PNG or WebP</small></span><span class="action-arrow" aria-hidden="true">↗</span><input id="photo" type="file" accept="image/*" capture="environment"></label>
+        </div>
+        <div class="photo-preview" id="photoPreview" hidden>
+          <img id="previewImage" alt="Preview of selected invoice">
+          <div class="preview-meta"><div><strong id="photoName">Invoice photo</strong><span id="photoSize"></span></div><button id="removePhoto" class="text-button" type="button">Remove</button></div>
+          <button class="button button-green full" id="readPhotoButton" type="button" hidden>Read photo with Gemini <span aria-hidden="true">→</span></button>
+        </div>
+        <p class="privacy-note" id="privacyNote"><span class="lock-icon" aria-hidden="true">◈</span> Your photo stays on this device. Image reading isn’t configured yet.</p>
+        <div class="divider"><span>or paste the printed details</span></div>
+        <label class="source-label" for="sourceText">Invoice text</label>
+        <textarea id="sourceText" rows="5" placeholder="Product: Parle Big Kaccha Mango Bite Jar 3.485 kg&#10;Net amount paid: 6600&#10;Paid quantity: 12 cartons&#10;Free cartons: 0"></textarea>
+        <button class="button button-dark full" id="extractButton" type="button">Read details <span aria-hidden="true">→</span></button>
+        <p class="small-note">You can also type the printed numbers into the review fields.</p>
+      </section>
+
+      <section class="review-card card" aria-labelledby="reviewTitle">
+        <div class="section-heading"><span class="step">02</span><div><h2 id="reviewTitle">Check the details</h2><p>Make sure the amount and carton count are right.</p></div></div>
+        <div class="fields">
+          <label for="product">Product name<input id="product" type="text" placeholder="e.g. Mango bite jar" autocomplete="off"></label>
+          <label for="amount">Net amount actually payable <span class="field-hint">GST included</span><span class="money-input"><span aria-hidden="true">₹</span><input id="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></span></label>
+          <div class="quantity-row"><label for="paid">Paid quantity<input id="paid" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 12"></label><label for="unit">Printed unit<select id="unit"><option value="unknown">Choose unit</option><option value="carton">Carton</option><option value="jar">Jar</option><option value="piece">Piece</option><option value="bag">Bag</option><option value="unit">Unit</option></select></label></div>
+          <label for="free">Free cartons received <span class="field-hint">Only if stated; confirm 0 if none</span><input id="free" type="number" min="0" step="1" inputmode="numeric" placeholder="Confirm quantity"></label>
+        </div>
+        <div class="evidence-note" id="evidenceNote" hidden></div>
+        <div class="notice" id="reviewNotice" role="status" aria-live="polite">Add an invoice to begin. We’ll ask before using unclear details.</div>
+        <button class="button button-green full" id="calculateButton" type="button">Calculate landing price <span aria-hidden="true">→</span></button>
+      </section>
+
+      <section class="result-card" id="resultCard" aria-labelledby="resultTitle" aria-live="polite">
+        <div class="result-heading"><div><span class="step">03</span><div><h2 id="resultTitle">Your landing price</h2><p>The amount you paid, divided by cartons received.</p></div></div><span class="gst-tag">GST included</span></div>
+        <div class="empty-result" id="emptyResult"><span class="empty-mark" aria-hidden="true">₹</span><div><strong>Your result will appear here</strong><span>We only show a price when the details are confirmed.</span></div></div>
+        <div id="result" hidden></div>
+      </section>
+    </section>
+    <footer><a class="footer-brand" href="/">VyaparVani</a><span>Simple carton pricing for your shop.</span><span id="providerStatus">Local extraction</span></footer>
+  </main>
+
+  <dialog id="cameraDialog" class="camera-dialog" aria-labelledby="cameraTitle">
+    <div class="camera-head"><div><h2 id="cameraTitle">Take an invoice photo</h2><p>Keep the full invoice inside the frame.</p></div><button id="closeCamera" class="close-button" type="button" aria-label="Close camera">×</button></div>
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <div id="cameraError" class="camera-error" hidden></div>
+    <button id="capturePhoto" class="button button-green full" type="button">Capture photo</button>
+  </dialog>
+  <canvas id="captureCanvas" hidden></canvas>
+  <script src="/app.js" defer></script>
+</body>
+</html>

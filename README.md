@@ -4,18 +4,17 @@ VyaparVani reads an FMCG invoice or scheme and calculates the GST-inclusive net 
 
 `net amount actually payable ÷ (paid cartons + explicit free cartons)`
 
-The calculation is deterministic Python code. Extraction is kept behind a provider interface so a Gemini or vision provider can be added later. V1 includes typed-text extraction and a manual review flow for uploaded images; it does not pretend to OCR images without a configured provider.
+The calculation is deterministic Python code. Typed text uses a conservative local extractor. Photo extraction is optional and uses a server-side Gemini key when configured; otherwise photos stay as local previews and the user enters the details manually.
 
 ## Run
 
 Requires Python 3.10 or newer and no third-party packages.
 
 ```powershell
-cd outputs/vyaparvani
 python app.py
 ```
 
-Open <http://127.0.0.1:8000>. Upload a photo or paste invoice text, review the extracted fields, and confirm any unclear quantity units. Uploaded images stay in the browser and are not sent to a service. Typed text is parsed by a conservative local extractor.
+Open <http://127.0.0.1:8000>. Use the camera or upload an invoice photo, review the extracted fields, and confirm any unclear quantity units. Camera capture requires browser permission. If `GEMINI_API_KEY` is configured on the server, the user can choose to send the photo to Gemini for field extraction; otherwise the photo remains a local preview and the user enters the printed values manually. Typed text is parsed by a conservative local extractor.
 
 ## Example typed input
 
@@ -33,7 +32,10 @@ The app shows ₹550.00/carton. It never removes GST, adds internal pieces to a 
 - `app.py` — local web server and extraction API
 - `vyaparvani/calculator.py` — validation and deterministic calculation
 - `vyaparvani/extraction.py` — provider protocol and text extraction implementation
-- `web/` — upload, text entry, editable review fields, states, and calculation breakdown
+- `public/` — responsive camera/upload flow, text entry, editable review fields, states, and calculation breakdown
+- `api/` — Vercel Python function entry points
+- `vyaparvani/http_api.py` — shared API logic used locally and on Vercel
+- `vyaparvani/vision.py` — optional Gemini image-to-fields provider
 - `tests/` — ground-truth scenarios derived from the five invoice photos and calculator behavior
 - `data/ground_truth.json` — photo-derived values, source notes, and expected validation states
 - `AGENTS.md` — repository-wide product and implementation rules
@@ -42,7 +44,21 @@ The app shows ₹550.00/carton. It never removes GST, adds internal pieces to a 
 
 ## Extraction provider configuration
 
-The configured provider defaults to `manual_text`. `GEMINI_API_KEY` and `GEMINI_MODEL` are future configuration values only; V1 does not call Gemini, and no credentials are embedded in the project. A future provider should implement `ExtractionProvider.extract_text(text)` and/or image extraction, then return the structured schema described in `vyaparvani/extraction.py`. Keep monetary calculation in `calculator.py`.
+The configured provider defaults to `manual_text`. For local development, put `GEMINI_API_KEY=...` in `.env.local` at the repository root. The local `app.py` reads that gitignored file when the server starts. Do not commit `.env.local` or place the key in a GitHub file. For a Vercel deployment, add `GEMINI_API_KEY` as a Vercel project environment variable; serverless functions do not load `.env.local`. You can alternatively set the key in PowerShell before starting the app:
+
+```powershell
+$env:GEMINI_API_KEY = "your-key-from-google-ai-studio"
+$env:GEMINI_MODEL = "gemini-3.8-flash" # optional
+python app.py
+```
+
+The key is read only by the server and must never be placed in browser code or committed. On Vercel, add `GEMINI_API_KEY` and optionally `GEMINI_MODEL` in the project's environment-variable settings. The user chooses **Read photo with Gemini** before the invoice image is transmitted. Gemini returns structured fields and source evidence; Python validation and `calculator.py` remain authoritative for confirmation and arithmetic. With no key, image previews and typed/manual entry remain available.
+
+## Deploy to Vercel
+
+This repository includes Vercel Python function entry points and serves the app from `public/`. Import the GitHub repository in Vercel and leave the project root at the repository root (the directory containing this README). No provider credentials are required for manual V1 use. Python Functions are currently listed as Beta by Vercel; check the current runtime status before using this deployment for critical business workflows.
+
+The API endpoints are `/api/config`, `/api/extract`, `/api/extract-image`, and `/api/calculate`. They use the same shared validation and extraction logic as the local server.
 
 ## Ground truth and limits
 
