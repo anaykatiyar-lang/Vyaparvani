@@ -73,7 +73,11 @@ def extract_invoice_image_with_groq(payload):
     request = Request(
         "https://api.groq.com/openai/v1/chat/completions",
         data=json.dumps(request_body).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "VyaparVani/1.0 (invoice extraction)",
+        },
         method="POST",
     )
     try:
@@ -81,13 +85,20 @@ def extract_invoice_image_with_groq(payload):
             response_data = json.loads(response.read())
     except HTTPError as error:
         try:
-            provider_error = json.loads(error.read().decode("utf-8"))
+            error_body = error.read().decode("utf-8", errors="replace")
+            provider_error = json.loads(error_body)
             detail = provider_error.get("error", {}).get("message", "")
-        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+        except (json.JSONDecodeError, AttributeError):
+            error_body = locals().get("error_body", "")
             detail = ""
-        logging.warning("Groq vision returned HTTP %s: %s", error.code, str(detail)[:300])
-        if error.code in (401, 403):
-            raise ValueError("Groq rejected the API key or its access. Check GROQ_API_KEY in server settings.") from error
+        provider_detail = str(detail or error_body).strip()
+        logging.warning("Groq vision returned HTTP %s: %s", error.code, provider_detail[:300])
+        if error.code == 401:
+            raise ValueError("Groq rejected the API key. Check that GROQ_API_KEY is a current Groq key in this server's settings, then redeploy.") from error
+        if error.code == 403:
+            if "1010" in provider_detail:
+                raise ValueError("Groq's network security blocked this request (Cloudflare 1010). The key was not identified as invalid; retry from the deployed site or contact Groq support if it continues.") from error
+            raise ValueError(f"Groq denied access to model {model}. Check that this model is enabled for the key in Groq Console, or select an available vision model.") from error
         if error.code == 429:
             raise ValueError("Groq's free-tier limit was reached. Wait for the limit to reset or check your Groq Console usage.") from error
         if error.code in (400, 413, 415):
