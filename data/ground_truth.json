@@ -1,0 +1,62 @@
+[
+  {
+    "id": "flipkart-parle-kaccha-12",
+    "source_photo": "Walmart/Flipkart Wholesale invoice, photo 2 of 5",
+    "product": "Parle Big Kaccha Mango Bite Jar 3.485 kg",
+    "net_amount_paid": "6600.00",
+    "paid_quantity": "12",
+    "printed_quantity_unit": "UNT (printed UOM: UNIT)",
+    "free_cartons": "0",
+    "expected_status": "CONFIRM",
+    "expected_landing_price_per_carton": null,
+    "notes": "Line total includes GST. Confirm whether the invoice's 12 UNIT entries represent cartons before applying the carton formula. Handwritten mark ignored. A jar is one sold unit; no inner pieces are counted."
+  },
+  {
+    "id": "flipkart-parle-kaccha-13",
+    "source_photo": "Walmart/Flipkart Wholesale invoice, photo 1 of 5",
+    "product": "Parle Big Kaccha Mango Bite Jar 3.485 kg",
+    "net_amount_paid": "7020.00",
+    "paid_quantity": "13",
+    "printed_quantity_unit": "UNT (printed UOM: UNIT)",
+    "free_cartons": "0",
+    "expected_status": "CONFIRM",
+    "expected_landing_price_per_carton": null,
+    "notes": "Line total includes GST. Confirm whether UNIT means carton for this calculation. Handwritten scheme note ignored."
+  },
+  {
+    "id": "flipkart-parle-londonberry-6",
+    "source_photo": "Walmart/Flipkart Wholesale invoice, photo 1 of 5",
+    "product": "Parle Grand Londonberry Jar 3.485 kg",
+    "net_amount_paid": "3277.74",
+    "paid_quantity": "6",
+    "printed_quantity_unit": "UNT (printed UOM: UNIT)",
+    "free_cartons": "0",
+    "expected_status": "CONFIRM",
+    "expected_landing_price_per_carton": null,
+    "notes": "Line total includes GST. Confirm whether UNIT means carton. Do not infer any free stock from discount lines or handwriting."
+  },
+  {
+    "id": "ashok-tiranga-5-bags",
+    "source_photo": "Ashok Agency GST invoice, photo 5 of 5",
+    "product": "Tiranga Agri (printed invoice item)",
+    "net_amount_paid": "2900.00",
+    "paid_quantity": "5",
+    "printed_quantity_unit": "BAG",
+    "free_cartons": "0",
+    "expected_status": "CONFIRM",
+    "expected_landing_price_per_carton": null,
+    "notes": "Grand total is ₹2,900 including ₹138.10 GST. Five bags are not confirmed as cartons, so a carton price cannot be calculated yet. Handwritten annotations ignored."
+  },
+  {
+    "id": "multi-product-line-units",
+    "source_photo": "Ajeet Trading multi-product invoices, photos 3–4 of 5",
+    "product": "Multiple printed invoice lines (individual product must be selected)",
+    "net_amount_paid": null,
+    "paid_quantity": null,
+    "printed_quantity_unit": "invoice mixes product lines; some quantities are printed in PCS/CA labels",
+    "free_cartons": null,
+    "expected_status": "CANNOT CALCULATE",
+    "expected_landing_price_per_carton": null,
+    "notes": "The invoice has multiple products and line totals. Select a product line and confirm its carton quantity; handwritten quantities are excluded."
+  }
+]
