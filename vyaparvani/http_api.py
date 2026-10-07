@@ -1,8 +1,11 @@
 """Shared HTTP request helpers for the local server and Vercel functions."""
 
 import json
+import os
+
 from .calculator import calculate
 from .extraction import ManualTextProvider
+from .groq_vision import extract_invoice_image_with_groq
 
 provider = ManualTextProvider()
 
@@ -19,6 +22,17 @@ def extract(payload):
 
 def calculate_fields(payload):
     return calculate(payload)
+
+
+def config():
+    enabled = bool(os.environ.get("GROQ_API_KEY", "").strip())
+    return {"provider": "groq" if enabled else "manual_text", "image_ocr": enabled}
+
+
+def extract_image(payload):
+    if not os.environ.get("GROQ_API_KEY", "").strip():
+        raise ProviderNotConfigured("Photo reading is not configured. Add GROQ_API_KEY to the server environment.")
+    return {"fields": extract_invoice_image_with_groq(payload)}
 
 
 def send_json(handler, payload, status=200):
@@ -41,3 +55,7 @@ def request_payload(handler):
     except (ValueError, json.JSONDecodeError) as error:
         send_json(handler, {"error": str(error)}, 400)
         return None
+
+
+class ProviderNotConfigured(Exception):
+    """Groq vision credentials are not configured on the server."""

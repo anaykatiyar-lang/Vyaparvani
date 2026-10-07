@@ -5,8 +5,10 @@ const cameraDialog = $('cameraDialog');
 let previewUrl = null;
 let cameraStream = null;
 let activePhoto = null;
-let imageOcrEnabled = Boolean(window.Tesseract?.createWorker);
-let ocrWorkerPromise = null;
+let imageOcrEnabled = false;
+let imageOcrProvider = 'groq';
+
+function imageReaderLabel() { return 'Groq Qwen Vision'; }
 
 function currentFields() {
   return { product: form.product.value, net_amount_paid: form.amount.value,
@@ -106,8 +108,8 @@ function showPhoto(file) {
   $('photoPreview').hidden = false;
   clearResult();
   showNotice(imageOcrEnabled
-    ? 'Photo ready. Choose “Read photo on this device” to extract its printed text.'
-    : 'Photo added. On-device OCR did not load; enter the printed values below.');
+    ? `Photo ready. Choose “Read photo with ${imageReaderLabel()}” to extract the invoice fields.`
+    : 'Photo added. Groq photo reading is not configured yet; enter the printed values below.');
 }
 
 async function compressedImageDataUrl(file) {
@@ -126,24 +128,6 @@ async function compressedImageDataUrl(file) {
     reader.onerror = () => reject(new Error('Could not read the photo. Choose it again and retry.'));
     reader.readAsDataURL(blob);
   });
-}
-
-async function getOcrWorker(button) {
-  if (!window.Tesseract?.createWorker) {
-    throw new Error('On-device OCR could not load. Check your internet connection, refresh the page, or enter the details manually.');
-  }
-  if (!ocrWorkerPromise) {
-    ocrWorkerPromise = window.Tesseract.createWorker('eng', 1, {
-      logger: message => {
-        if (message.status === 'loading language traineddata') button.textContent = 'Preparing OCR…';
-        if (message.status === 'recognizing text') button.textContent = `Reading photo ${Math.round((message.progress || 0) * 100)}%…`;
-      }
-    }).catch(error => {
-      ocrWorkerPromise = null;
-      throw error;
-    });
-  }
-  return ocrWorkerPromise;
 }
 
 function showEvidence(evidence) {
@@ -198,25 +182,20 @@ $('readPhotoButton').addEventListener('click', async () => {
   if (!captureFile) return;
   const button = $('readPhotoButton');
   button.disabled = true;
-  button.textContent = 'Preparing photo…';
+  button.textContent = 'Reading invoice…';
   try {
     const image_data_url = await compressedImageDataUrl(captureFile);
-    const worker = await getOcrWorker(button);
-    const { data } = await worker.recognize(image_data_url);
-    const recognizedText = String(data.text || '').trim();
-    if (!recognizedText) throw new Error('No readable text was found. Try a brighter, closer, sharper photo, or enter the details manually.');
-    $('sourceText').value = recognizedText;
-    const payload = await postJson('/api/extract', { text: recognizedText });
+    const payload = await postJson('/api/extract-image', { image_data_url });
     setFields(payload.fields || {}, true);
     showEvidence(payload.fields?.evidence);
     clearResult();
-    showNotice('Photo text was read on this device. Check the fields against the invoice and fill any details that were not identified before calculating.');
+    showNotice('Invoice fields extracted. Check every value against the photo and resolve any unclear details before calculating.');
     form.product.focus();
   } catch (error) {
     showNotice(error.message || 'Could not read this photo. Enter the details manually.', 'error');
   } finally {
     button.disabled = false;
-    button.innerHTML = 'Read photo on this device <span aria-hidden="true">→</span>';
+    button.innerHTML = `Read photo with ${imageReaderLabel()} <span aria-hidden="true">→</span>`;
   }
 });
 $('removePhoto').addEventListener('click', () => {
@@ -273,9 +252,16 @@ form.unit.addEventListener('change', () => {
   showNotice('Details changed. Check them and calculate again.');
 });
 
-$('readPhotoButton').hidden = !imageOcrEnabled;
-$('readPhotoButton').innerHTML = 'Read photo on this device <span aria-hidden="true">→</span>';
-$('providerStatus').textContent = imageOcrEnabled ? 'Photo reading: on-device' : 'Photo OCR unavailable';
-$('privacyNote').innerHTML = imageOcrEnabled
-  ? '<span class="lock-icon" aria-hidden="true">◈</span> Tesseract reads the resized photo in your browser. The photo stays on this device; recognized text is sent to VyaparVani to prefill fields.'
-  : '<span class="lock-icon" aria-hidden="true">◈</span> On-device OCR could not load. Refresh while connected, or enter the details manually.';
+fetch('/api/config').then(response => response.json()).then(config => {
+  imageOcrEnabled = Boolean(config.image_ocr);
+  imageOcrProvider = config.provider || 'groq';
+  $('readPhotoButton').hidden = !imageOcrEnabled;
+  $('readPhotoButton').innerHTML = `Read photo with ${imageReaderLabel()} <span aria-hidden="true">→</span>`;
+  $('providerStatus').textContent = imageOcrEnabled ? `Photo reading: ${imageReaderLabel()}` : 'Manual review';
+  $('privacyNote').innerHTML = imageOcrEnabled
+    ? '<span class="lock-icon" aria-hidden="true">◈</span> Nothing is sent until you choose Read photo. Then Groq receives the resized invoice image to extract printed fields.'
+    : '<span class="lock-icon" aria-hidden="true">◈</span> Add GROQ_API_KEY to the server environment to enable photo reading.';
+}).catch(() => {
+  $('providerStatus').textContent = 'Manual review';
+  $('privacyNote').innerHTML = '<span class="lock-icon" aria-hidden="true">◈</span> Could not check photo-reading setup. You can still enter details manually.';
+});

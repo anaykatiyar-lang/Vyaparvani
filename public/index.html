@@ -29,9 +29,9 @@
         <div class="photo-preview" id="photoPreview" hidden>
           <img id="previewImage" alt="Preview of selected invoice">
           <div class="preview-meta"><div><strong id="photoName">Invoice photo</strong><span id="photoSize"></span></div><button id="removePhoto" class="text-button" type="button">Remove</button></div>
-          <button class="button button-green full" id="readPhotoButton" type="button" hidden>Read photo on this device <span aria-hidden="true">→</span></button>
+          <button class="button button-green full" id="readPhotoButton" type="button" hidden>Read photo with Groq Qwen Vision <span aria-hidden="true">→</span></button>
         </div>
-        <p class="privacy-note" id="privacyNote"><span class="lock-icon" aria-hidden="true">◈</span> Photo reading runs on your device. No OCR API key is needed.</p>
+        <p class="privacy-note" id="privacyNote"><span class="lock-icon" aria-hidden="true">◈</span> Add a Groq server key to enable photo reading.</p>
         <div class="divider"><span>or paste the printed details</span></div>
         <label class="source-label" for="sourceText">Invoice text</label>
         <textarea id="sourceText" rows="5" placeholder="Product: Parle Big Kaccha Mango Bite Jar 3.485 kg&#10;Net amount paid: 6600&#10;Paid quantity: 12 cartons&#10;Free cartons: 0"></textarea>
@@ -68,7 +68,6 @@
     <button id="capturePhoto" class="button button-green full" type="button">Capture photo</button>
   </dialog>
   <canvas id="captureCanvas" hidden></canvas>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>
