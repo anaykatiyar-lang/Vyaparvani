@@ -2,10 +2,13 @@
 
 import json
 import os
+import base64
+import re
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from .calculator import calculate
 from .extraction import ManualTextProvider
-from .groq_vision import extract_invoice_image_with_groq
 
 provider = ManualTextProvider()
 
@@ -25,14 +28,46 @@ def calculate_fields(payload):
 
 
 def config():
-    enabled = bool(os.environ.get("GROQ_API_KEY", "").strip())
-    return {"provider": "groq" if enabled else "manual_text", "image_ocr": enabled}
+    enabled = bool(os.environ.get("DOCTR_OCR_URL", "").strip() and os.environ.get("DOCTR_OCR_TOKEN", "").strip())
+    return {"provider": "doctr" if enabled else "manual_text", "image_ocr": enabled}
 
 
 def extract_image(payload):
-    if not os.environ.get("GROQ_API_KEY", "").strip():
-        raise ProviderNotConfigured("Photo reading is not configured. Add GROQ_API_KEY to the server environment.")
-    return {"fields": extract_invoice_image_with_groq(payload)}
+    endpoint = os.environ.get("DOCTR_OCR_URL", "").strip().rstrip("/")
+    token = os.environ.get("DOCTR_OCR_TOKEN", "").strip()
+    if not endpoint or not token:
+        raise ProviderNotConfigured("Photo reading is not configured. Set DOCTR_OCR_URL and DOCTR_OCR_TOKEN on the server.")
+    data_url = str(payload.get("image_data_url") or "")
+    match = re.fullmatch(r"data:(image/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\s]+)", data_url)
+    if not match:
+        raise ValueError("Choose a JPG, PNG or WebP invoice photo.")
+    try:
+        image = base64.b64decode(re.sub(r"\s+", "", match.group(2)), validate=True)
+    except ValueError as error:
+        raise ValueError("The image could not be read. Choose it again and retry.") from error
+    if not image or len(image) > 3 * 1024 * 1024:
+        raise ValueError("The compressed photo must be smaller than 3 MB. Please choose a smaller image.")
+    request = Request(
+        f"{endpoint}/ocr",
+        data=json.dumps({"image_data_url": data_url}).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=50) as response:
+            result = json.loads(response.read())
+    except HTTPError as error:
+        if error.code in (401, 403):
+            raise ValueError("The OCR service rejected its configured token. Check DOCTR_OCR_TOKEN on both services.") from error
+        raise ValueError("The docTR OCR service could not read this photo. Retry or enter the details manually.") from error
+    except (URLError, TimeoutError, OSError) as error:
+        raise ValueError("Could not reach the docTR OCR service. Retry or enter the details manually.") from error
+    text = result.get("text") if isinstance(result, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("No readable text was found in this photo. Try a sharper image or enter the details manually.")
+    fields = provider.extract_text(text)
+    fields.update({"source": "invoice_photo", "ocr_provider": "doctr", "ocr_text": text})
+    return {"fields": fields}
 
 
 def send_json(handler, payload, status=200):
@@ -58,4 +93,4 @@ def request_payload(handler):
 
 
 class ProviderNotConfigured(Exception):
-    """Groq vision credentials are not configured on the server."""
+    """The docTR OCR service is not configured on the server."""

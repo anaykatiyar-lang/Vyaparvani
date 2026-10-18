@@ -1,4 +1,4 @@
-"""Load optional development-only Groq settings from .env.local."""
+"""Load optional development-only app settings from .env.local."""
 
 import os
 from pathlib import Path
@@ -18,7 +18,7 @@ def load_local_env():
             line = line[7:].strip()
         name, separator, value = line.partition("=")
         name = name.strip()
-        if not separator or name not in {"GROQ_API_KEY", "GROQ_VISION_MODEL"}:
+        if not separator or name not in {"DOCTR_OCR_URL", "DOCTR_OCR_TOKEN"}:
             continue
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:

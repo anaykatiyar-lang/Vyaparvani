@@ -6,9 +6,7 @@ let previewUrl = null;
 let cameraStream = null;
 let activePhoto = null;
 let imageOcrEnabled = false;
-let imageOcrProvider = 'groq';
-
-function imageReaderLabel() { return 'Groq Qwen Vision'; }
+function imageReaderLabel() { return 'docTR OCR'; }
 
 function currentFields() {
   return { product: form.product.value, net_amount_paid: form.amount.value,
@@ -109,7 +107,7 @@ function showPhoto(file) {
   clearResult();
   showNotice(imageOcrEnabled
     ? `Photo ready. Choose “Read photo with ${imageReaderLabel()}” to extract the invoice fields.`
-    : 'Photo added. Groq photo reading is not configured yet; enter the printed values below.');
+    : 'Photo added. docTR photo reading is not configured yet; enter the printed values below.');
 }
 
 async function compressedImageDataUrl(file) {
@@ -188,9 +186,10 @@ $('readPhotoButton').addEventListener('click', async () => {
     const payload = await postJson('/api/extract-image', { image_data_url });
     setFields(payload.fields || {}, true);
     showEvidence(payload.fields?.evidence);
+    if (payload.fields?.ocr_text) $('sourceText').value = payload.fields.ocr_text;
     clearResult();
-    showNotice('Invoice fields extracted. Check every value against the photo and resolve any unclear details before calculating.');
-    form.product.focus();
+    showNotice('Printed text read with docTR. Check the photo and fill any details it could not identify; handwritten marks may also appear in the text.', 'confirm');
+    if (!form.product.value || !form.amount.value || !form.paid.value) form.product.focus();
   } catch (error) {
     showNotice(error.message || 'Could not read this photo. Enter the details manually.', 'error');
   } finally {
@@ -254,13 +253,12 @@ form.unit.addEventListener('change', () => {
 
 fetch('/api/config').then(response => response.json()).then(config => {
   imageOcrEnabled = Boolean(config.image_ocr);
-  imageOcrProvider = config.provider || 'groq';
   $('readPhotoButton').hidden = !imageOcrEnabled;
   $('readPhotoButton').innerHTML = `Read photo with ${imageReaderLabel()} <span aria-hidden="true">→</span>`;
   $('providerStatus').textContent = imageOcrEnabled ? `Photo reading: ${imageReaderLabel()}` : 'Manual review';
   $('privacyNote').innerHTML = imageOcrEnabled
-    ? '<span class="lock-icon" aria-hidden="true">◈</span> Nothing is sent until you choose Read photo. Then Groq receives the resized invoice image to extract printed fields.'
-    : '<span class="lock-icon" aria-hidden="true">◈</span> Add GROQ_API_KEY to the server environment to enable photo reading.';
+    ? '<span class="lock-icon" aria-hidden="true">◈</span> Nothing is sent until you choose Read photo. The resized image is sent to the configured docTR OCR service.'
+    : '<span class="lock-icon" aria-hidden="true">◈</span> Configure the docTR OCR service on the server to enable photo reading.';
 }).catch(() => {
   $('providerStatus').textContent = 'Manual review';
   $('privacyNote').innerHTML = '<span class="lock-icon" aria-hidden="true">◈</span> Could not check photo-reading setup. You can still enter details manually.';
