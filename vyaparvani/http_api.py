@@ -63,10 +63,23 @@ def extract_image(payload):
         with urlopen(request, timeout=50) as response:
             result = json.loads(response.read())
     except HTTPError as error:
+        try:
+            google_error = json.loads(error.read()).get("error", {})
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            google_error = {}
+        detail = str(google_error.get("message", "")).strip()
+        status = str(google_error.get("status", "")).strip()
+        diagnostic = ": ".join(part for part in (status, detail) if part)
         if error.code in (401, 403):
-            raise ValueError("Google rejected the API key or the Cloud Vision API is not enabled for its project. Check the key and API restrictions.") from error
+            message = "Google rejected the API key or Cloud Vision access. Check the key, project, API restrictions, and billing."
+            if diagnostic:
+                message += f" Google says: {diagnostic}"
+            raise ValueError(message) from error
         if error.code == 429:
-            raise ValueError("Google Cloud Vision quota was reached. Check the project's Vision API usage and quota.") from error
+            message = "Google Cloud Vision quota was reached. Check the project's Vision API usage and quota."
+            if diagnostic:
+                message += f" Google says: {diagnostic}"
+            raise ValueError(message) from error
         if error.code in (400, 413, 415):
             raise ValueError("Google Cloud Vision could not process this photo. Choose a clear JPG, PNG or WebP image and retry.") from error
         raise ValueError("Google Cloud Vision could not read this photo. Retry or enter the details manually.") from error
