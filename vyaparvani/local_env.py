@@ -18,7 +18,7 @@ def load_local_env():
             line = line[7:].strip()
         name, separator, value = line.partition("=")
         name = name.strip()
-        if not separator or name not in {"DOCTR_OCR_URL", "DOCTR_OCR_TOKEN"}:
+        if not separator or name != "GOOGLE_VISION_API_KEY":
             continue
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:

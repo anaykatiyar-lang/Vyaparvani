@@ -6,7 +6,7 @@ let previewUrl = null;
 let cameraStream = null;
 let activePhoto = null;
 let imageOcrEnabled = false;
-function imageReaderLabel() { return 'docTR OCR'; }
+function imageReaderLabel() { return 'Google Cloud Vision'; }
 
 function currentFields() {
   return { product: form.product.value, net_amount_paid: form.amount.value,
@@ -107,7 +107,7 @@ function showPhoto(file) {
   clearResult();
   showNotice(imageOcrEnabled
     ? `Photo ready. Choose “Read photo with ${imageReaderLabel()}” to extract the invoice fields.`
-    : 'Photo added. docTR photo reading is not configured yet; enter the printed values below.');
+    : 'Photo added. Google Cloud Vision photo reading is not configured yet; enter the printed values below.');
 }
 
 async function compressedImageDataUrl(file) {
@@ -188,7 +188,7 @@ $('readPhotoButton').addEventListener('click', async () => {
     showEvidence(payload.fields?.evidence);
     if (payload.fields?.ocr_text) $('sourceText').value = payload.fields.ocr_text;
     clearResult();
-    showNotice('Printed text read with docTR. Check the photo and fill any details it could not identify; handwritten marks may also appear in the text.', 'confirm');
+    showNotice('Invoice text read with Google Cloud Vision. Check the photo and fill any details it could not identify; handwritten marks may also appear in the text.', 'confirm');
     if (!form.product.value || !form.amount.value || !form.paid.value) form.product.focus();
   } catch (error) {
     showNotice(error.message || 'Could not read this photo. Enter the details manually.', 'error');
@@ -257,8 +257,8 @@ fetch('/api/config').then(response => response.json()).then(config => {
   $('readPhotoButton').innerHTML = `Read photo with ${imageReaderLabel()} <span aria-hidden="true">→</span>`;
   $('providerStatus').textContent = imageOcrEnabled ? `Photo reading: ${imageReaderLabel()}` : 'Manual review';
   $('privacyNote').innerHTML = imageOcrEnabled
-    ? '<span class="lock-icon" aria-hidden="true">◈</span> Nothing is sent until you choose Read photo. The resized image is sent to the configured docTR OCR service.'
-    : '<span class="lock-icon" aria-hidden="true">◈</span> Configure the docTR OCR service on the server to enable photo reading.';
+    ? '<span class="lock-icon" aria-hidden="true">◈</span> Nothing is sent until you choose Read photo. The resized image is sent to Google Cloud Vision for text recognition.'
+    : '<span class="lock-icon" aria-hidden="true">◈</span> Add GOOGLE_VISION_API_KEY to the server environment to enable photo reading.';
 }).catch(() => {
   $('providerStatus').textContent = 'Manual review';
   $('privacyNote').innerHTML = '<span class="lock-icon" aria-hidden="true">◈</span> Could not check photo-reading setup. You can still enter details manually.';

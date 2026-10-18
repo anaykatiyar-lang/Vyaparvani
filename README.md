@@ -4,7 +4,7 @@ VyaparVani reads an FMCG invoice or scheme and calculates the GST-inclusive net 
 
 `net amount actually payable ÷ (paid cartons + explicit free cartons)`
 
-The calculation is deterministic Python code. Invoice photos are sent to a separately hosted Mindee docTR OCR service only after the user presses the photo-reading button. docTR returns recognized text; the app pre-fills only fields it can identify from explicit key/value text and shows the OCR text for review. The user confirms the values, and Python validation and calculation code remain authoritative.
+The calculation is deterministic Python code. Invoice photos are sent to Google Cloud Vision for text recognition only after the user presses the photo-reading button. The app pre-fills only fields it can identify from explicit key/value text and shows the OCR text for review. The user confirms the values, and Python validation and calculation code remain authoritative.
 
 ## Run
 
@@ -14,7 +14,7 @@ Requires Python 3.10 or newer and no third-party packages.
 python app.py
 ```
 
-Open <http://127.0.0.1:8000>. Use the camera or upload an invoice photo, choose **Read photo with docTR OCR**, review the recognized text and fields, and confirm any unclear quantity units. Camera capture requires browser permission.
+Open <http://127.0.0.1:8000>. Use the camera or upload an invoice photo, choose **Read photo with Google Cloud Vision**, review the recognized text and fields, and confirm any unclear quantity units. Camera capture requires browser permission.
 
 ## Example typed input
 
@@ -36,38 +36,28 @@ The app shows ₹550.00/carton. It never removes GST, adds internal pieces to a 
 - `api/` — Vercel Python function entry points
 - `vyaparvani/http_api.py` — shared API logic used locally and on Vercel
 - `public/app.js` — photo upload, OCR request, editable field review, and calculator UI
-- `doctr-service/` — separate CPU docTR OCR service, packaged as a Docker container
+- `vyaparvani/http_api.py` — server-side Google Cloud Vision OCR request and shared API logic
 - `tests/` — ground-truth scenarios derived from the five invoice photos and calculator behavior
 - `data/ground_truth.json` — photo-derived values, source notes, and expected validation states
 - `AGENTS.md` — repository-wide product and implementation rules
 - `.agents/skills/` — focused repo-local skills for UI, extraction, calculation, validation, and testing
 - `.agents/skills/landing-price-calculator/references/domain-rules.md` — the agreed V1 business rules and photo notes
 
-## docTR photo reading
+## Google Cloud Vision photo reading
 
-The OCR service uses the open-source [Mindee docTR](https://github.com/mindee/doctr) project with its PyTorch CPU backend. It is a separate container because model dependencies, weights and inference do not suit a small serverless request handler's memory and cold-start profile. Create a long random shared token for both services (for example, `python -c "import secrets; print(secrets.token_urlsafe(32))"`).
+Enable the **Cloud Vision API** in your Google Cloud project. Create an API key restricted to the Cloud Vision API. The app sends the key in the `x-goog-api-key` request header from the server; it is never put in browser code. Google charges per image after the first 1,000 monthly Vision API units, so check usage and set quota limits in Google Cloud.
 
 ```dotenv
-DOCTR_OCR_URL=https://your-ocr-service.example.com
-DOCTR_OCR_TOKEN=your-long-random-shared-token
+GOOGLE_VISION_API_KEY=your_google_cloud_vision_api_key
 ```
 
-For local development, put these values in the gitignored `.env.local` at the repository root and restart `python app.py`. The token is sent only between the Vercel/local server and the OCR service; it is never exposed to the browser.
-
-### Deploy the OCR service
-
-1. Deploy the `doctr-service/` directory as a Docker web service on a container host with at least 2 GB RAM and outbound access to download docTR model weights on first start. Render, Railway, Fly.io, or a similar Docker host can run this service; it is not deployed as part of Vercel.
-2. Set `DOCTR_OCR_TOKEN` on the OCR service to a long random secret. Keep the service HTTPS-only and do not expose its token in client code.
-3. Wait for `https://your-ocr-service.example.com/health` to return `{"ok":true,"engine":"docTR"}` after its first model initialization. The service loads model weights on first OCR request.
-4. In Vercel **Settings → Environment Variables**, set `DOCTR_OCR_URL` to the service base URL and `DOCTR_OCR_TOKEN` to the same secret. Select the deployment environments and redeploy. Vercel does not read `.env.local` from GitHub.
-
-The browser resizes the image before it is sent to the app server, which forwards it to docTR. docTR recognizes text but does not identify handwriting versus print or interpret invoice meaning. As a result, handwritten text may appear in the OCR text; check every value against the photo. The current conservative parser pre-fills explicit key/value text only and leaves other fields for user review. It never infers free goods or calculates a price from OCR; Python validation and `calculator.py` handle the final decision and arithmetic.
+For local development, put the key in the gitignored `.env.local` at the repository root and restart `python app.py`. In Vercel, add `GOOGLE_VISION_API_KEY` under **Settings → Environment Variables**, select your deployment environments, and redeploy. Google Cloud Vision recognizes handwriting as well as printed text; check each extracted value against the photo. The current parser pre-fills explicit key/value text only and leaves other fields for review. It never infers free goods or calculates a price from OCR; Python validation and `calculator.py` handle the final decision and arithmetic.
 
 ## Deploy to Vercel
 
-This repository includes Vercel Python function entry points and serves the app from `public/`. Import the GitHub repository in Vercel and leave the project root at the repository root (the directory containing this README). Deploy the separate docTR Docker service and configure `DOCTR_OCR_URL` and `DOCTR_OCR_TOKEN` in Vercel before enabling photo reading.
+This repository includes Vercel Python function entry points and serves the app from `public/`. Import the GitHub repository in Vercel and leave the project root at the repository root (the directory containing this README). Configure `GOOGLE_VISION_API_KEY` in Vercel before enabling photo reading.
 
-The web app uses `/api/config`, `/api/extract`, `/api/extract-image`, and `/api/calculate`. The image endpoint calls the authenticated docTR service server-side; its token is never exposed to the browser. The calculator remains local Python logic in both Vercel and local deployments.
+The web app uses `/api/config`, `/api/extract`, `/api/extract-image`, and `/api/calculate`. The image endpoint calls Google Cloud Vision server-side; the API key is never exposed to the browser. The calculator remains local Python logic in both Vercel and local deployments.
 
 ## Ground truth and limits
 
